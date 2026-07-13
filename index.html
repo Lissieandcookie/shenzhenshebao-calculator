@@ -175,12 +175,16 @@
 <body>
     <div class="container">
         <h1>🏢 深圳社保缴纳计算器</h1>
-        <p class="subtitle">输入月薪酬基数，自动计算各项社保缴纳明细（四舍五入到分）</p>
+        <p class="subtitle">输入月薪酬，按公司缴纳比例计算社保缴费基数，自动生成各项社保缴纳明细（四舍五入到分）</p>
 
         <div class="input-section">
             <div class="input-group">
                 <label>月薪酬基数（元）</label>
-                <input type="number" id="salary" placeholder="请输入薪酬基数" />
+                <input type="number" id="salary" placeholder="请输入月薪酬" />
+            </div>
+            <div class="input-group">
+                <label>公司缴纳比例（%）</label>
+                <input type="number" id="companyRatio" value="43" style="width:100px;" />
             </div>
             <div class="input-group">
                 <div class="checkbox-group">
@@ -229,11 +233,12 @@
 
             <div class="note">
                 <strong>说明：</strong><br/>
-                1. 养老保险（地补）仅深圳户籍员工缴纳，非深户不缴纳此项<br/>
-                2. 工伤保险、生育保险个人不缴费，全部由公司承担<br/>
-                3. 所有金额按四舍五入到分计算<br/>
-                4. 到手工资 = 薪酬基数 - 个人社保缴纳合计（未扣个税和公积金）<br/>
-                5. 数据仅供参考，实际以工资条为准
+                1. 社保缴费基数 = 月薪酬 × 公司缴纳比例（当前默认43%）<br/>
+                2. 养老保险（地补）仅深圳户籍员工缴纳，非深户不缴纳此项<br/>
+                3. 工伤保险、生育保险个人不缴费，全部由公司承担<br/>
+                4. 所有金额按四舍五入到分计算<br/>
+                5. 到手工资 = 月薪酬 - 个人社保缴纳合计（未扣个税和公积金）<br/>
+                6. 数据仅供参考，实际以工资条为准
             </div>
         </div>
     </div>
@@ -312,12 +317,20 @@
 
         function calculate() {
             const salary = parseFloat(document.getElementById('salary').value);
+            const companyRatio = parseFloat(document.getElementById('companyRatio').value);
             const isShenzhenResident = document.getElementById('isShenzhenResident').checked;
 
             if (!salary || salary <= 0) {
-                alert('请输入有效的薪酬基数');
+                alert('请输入有效的月薪酬');
                 return;
             }
+            if (!companyRatio || companyRatio <= 0 || companyRatio > 100) {
+                alert('请输入有效的公司缴纳比例（1-100）');
+                return;
+            }
+
+            // 实际社保缴费基数 = 月薪酬 × 公司缴纳比例
+            const actualBase = roundToFen(salary * companyRatio / 100);
 
             let totalPersonal = 0;
             let totalCompany = 0;
@@ -328,14 +341,14 @@
                 if (rule.onlyShenzhenResident && !isShenzhenResident) return;
 
                 // 计算个人缴费基数和金额
-                let personalBase = clampBase(salary, rule.personalMin, rule.personalMax);
+                let personalBase = clampBase(actualBase, rule.personalMin, rule.personalMax);
                 let personalAmount = 0;
                 if (personalBase !== null && rule.personalRate > 0) {
                     personalAmount = roundToFen(personalBase * rule.personalRate);
                 }
 
                 // 计算公司缴费基数和金额
-                let companyBase = clampBase(salary, rule.companyMin, rule.companyMax);
+                let companyBase = clampBase(actualBase, rule.companyMin, rule.companyMax);
                 let companyAmount = 0;
                 if (companyBase !== null) {
                     companyAmount = roundToFen(companyBase * rule.companyRate);
